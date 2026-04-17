@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { generateTrainingHand } from './mahjong/generator.js';
+import { generateProblem } from './mahjong/generator.js';
 import { calcAcceptance, bestDiscards } from './mahjong/solver.js';
 import { TILE_COLORS, sortTiles } from './mahjong/tiles.js';
 
 const TOTAL_QUESTIONS = 10;
 const SUIT_LABEL = { m: '萬', p: '筒', s: '索' };
+
+const PROBLEM_TYPE_LABEL = {
+  tenpai:    { text: 'テンパイ問題',   color: 'text-orange-300', bg: 'bg-orange-900/30 border-orange-600' },
+  acceptance: null, // built dynamically
+};
 
 const SHANTEN_LABEL = {
   0: { text: 'テンパイ',    color: 'text-yellow-300', bg: 'bg-yellow-900/30 border-yellow-600' },
@@ -15,6 +20,13 @@ const SHANTEN_LABEL = {
 
 function shantenLabel(s) {
   return SHANTEN_LABEL[s] ?? { text: `${s}シャンテン`, color: 'text-gray-300', bg: 'bg-gray-700/40 border-gray-500' };
+}
+
+const SHANTEN_NAME = ['', '一向聴', '両シャンテン', '三シャンテン', '四シャンテン'];
+function problemTypeLabel(type, shanten) {
+  if (type === 'tenpai') return PROBLEM_TYPE_LABEL.tenpai;
+  const name = SHANTEN_NAME[shanten] ?? `${shanten}シャンテン`;
+  return { text: `受け広げ問題（${name}）`, color: 'text-blue-300', bg: 'bg-blue-900/30 border-blue-600' };
 }
 
 function handShanten(acceptanceResults) {
@@ -193,18 +205,22 @@ export default function App() {
   const [hand14, setHand14] = useState([]);
   const [acceptanceResults, setAcceptanceResults] = useState([]);
   const [bestTiles, setBestTiles] = useState([]);
+  const [problemType, setProblemType] = useState('tenpai');
+  const [problemShanten, setProblemShanten] = useState(0);
 
   const [selectedTile, setSelectedTile] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isCorrect, setIsCorrect] = useState(null);
 
   function loadQuestion() {
-    const { hand14: h } = generateTrainingHand();
+    const { hand14: h, type, shanten } = generateProblem();
     const results = calcAcceptance(h);
     const best = bestDiscards(results);
     setHand14(h);
     setAcceptanceResults(results);
     setBestTiles(best.map(b => b.tile));
+    setProblemType(type);
+    setProblemShanten(shanten ?? 0);
     setSelectedTile(null);
     setShowAnswer(false);
     setIsCorrect(null);
@@ -275,6 +291,16 @@ export default function App() {
       <main className="flex-1 flex flex-col items-center px-3 sm:px-8 py-4 sm:py-8
         gap-4 sm:gap-6 max-w-3xl mx-auto w-full">
 
+        {/* 問題タイプラベル */}
+        {(() => {
+          const pl = problemTypeLabel(problemType, problemShanten);
+          return (
+            <div className={`self-start px-3 py-1 rounded-full border text-xs sm:text-sm font-bold ${pl.bg} ${pl.color}`}>
+              {pl.text}
+            </div>
+          );
+        })()}
+
         {/* シャンテンバッジ（回答後） */}
         {showAnswer && (
           <div className={`self-start px-3 py-1 rounded-full border text-xs sm:text-sm font-bold ${sl.bg} ${sl.color}`}>
@@ -286,6 +312,8 @@ export default function App() {
         <p className="text-gray-400 text-xs sm:text-sm self-start">
           {showAnswer
             ? '答えを確認してください'
+            : problemType === 'tenpai'
+            ? 'ツモった14枚から、切ったら最も広く聴牌できる切り牌を選んでください'
             : 'ツモった14枚から、最も受け入れが広くなる切り牌を選んでください'}
         </p>
 
