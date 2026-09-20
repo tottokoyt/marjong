@@ -1,5 +1,5 @@
 import { tileId, SUITS, NUMBERS, sortTiles, shuffle, countTiles } from './tiles.js';
-import { calcAcceptance } from './solver.js';
+import { calcAcceptance, isAgari } from './solver.js';
 
 function parseTileLocal(tile) {
   return { num: parseInt(tile[0]), suit: tile[1] };
@@ -186,6 +186,9 @@ export function generateTenpaiProblem() {
     const swapCount = Math.random() < 0.2 ? 0 : 1;
     const hand14 = _swapHand(swapCount);
     if (!hand14) continue;
+    // Reject hands that are already a complete winning hand (agari) —
+    // there is no meaningful "discard to reach tenpai" question in that case.
+    if (isAgari(hand14)) continue;
 
     const results = calcAcceptance(hand14);
     const tenpaiDiscards = results.filter(r => r.shanten === 0);
